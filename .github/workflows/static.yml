@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中文發音音準辨識器</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f0f0;
+            color: #333;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 20px auto;
+            padding: 20px;
+            max-width: 900px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #ff6b81;
+            margin-bottom: 20px;
+        }
+        .section {
+            width: 100%;
+            margin-bottom: 30px;
+        }
+        .section h2 {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+        .section p {
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        #compare-section {
+            background-color: #f8f8f8;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .btn {
+            background-color: #ff6b81;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        #compare-btn {
+            background-color: orange;
+        }
+        .result {
+            margin-top: 22px;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        .score {
+            margin-top: 22px;
+            font-size: 26px;
+        }
+        .score.nice {
+            color: green;
+        }
+        .score.soso {
+            color: orange;
+        }
+        .score.notgood {
+            color: red;
+        }
+        .dual-text {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        #logo {
+            width: 100px;
+            height: auto;
+            position: absolute;
+            top: 10px;
+            left: 10px;
+        }
+        .sub-title {
+            color: #ff6b81;
+            font-size: 12px;
+            font-weight: lighter;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .language-buttons {
+            display: flex;
+            justify-content: center;
+            margin-top: 10px;
+        }
+        .language-button {
+            padding: 5px 10px;
+            margin: 0 5px;
+            font-size: 14px;
+            font-weight: bold;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #japan-btn {
+            background-color: #e0e0e0;
+            color: red;
+        }
+        #english-btn {
+            background-color: #e0e0e0;
+            color: blue;
+        }
+        .banner {
+            width: 100%;
+            height: 60px;
+            background-color: lightgreen;
+        }
+        .divider {
+            width: 100%;
+            height: 2px;
+            background-color: #ccc;
+            margin: 30px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="banner"></div>
+    <div class="container">
+        
+        <h1>中文發音音準辨識器</h1>
+        <p class="sub-title">Chinese pronunciation pitch recognizer</p>
+        <p class="sub-title">中国語の発音ピッチ認識装置</p>
+        <div class="language-buttons">
+            <button class="language-button" id="japan-btn">Japan</button>
+            <button class="language-button" id="english-btn">English</button>
+        </div>
+        <!-- 翻譯區 -->
+        <div class="section" id="translate-section">
+            <h2>A.翻譯區/ Translation Section/ 翻訳エリア</h2>
+            <!-- 功能備註：此段落負責處理文本的翻譯，支持手動輸入和語音輸入 -->
+            <div class="dual-text">
+                <p id="input-text">請輸入一段英文，系統將翻譯成繁體中文。</p>
+                <p id="input-text-en">Enter an English, the system will translate it into Traditional Chinese.</p>
+            </div>
+            <input type="text" id="english-input" placeholder="輸入英文..." style="width: 100%; padding: 10px; font-size: 16px;">
+            <button class="btn" id="voice-input-btn">語音輸入 / Voice Input</button>
+            <button class="btn" id="translate-btn">翻譯 / Translate</button>
+            <p class="result" id="translated-text"></p>
+            <audio id="audio-player" controls style="display: none;"></audio>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- 音準比對區 -->
+        <div class="section" id="compare-section">
+            <h2>B.中文音準比對區/Pronunciation Accuracy/中国語発音比較エリア</h2>
+            <!-- 功能備註：此段落負責評估用戶朗讀翻譯結果的發音準確度 -->
+            <div class="dual-text">
+                <p>After translation, please read the result aloud into the microphone.</p>
+                <p>翻訳が完了したら、マイクに向かって翻訳結果を読み上げてください。</p>
+            </div>
+            <button class="btn" id="compare-btn" disabled>開始比對/Start Comparison/発音の比較を開始する</button>
+            <p class="result" id="recognition-result"></p>
+            <p class="score" id="score-result"></p>
+        </div>
+    </div>
+    <div class="banner"></div>
+
+    <script>
+        const translateBtn = document.getElementById("translate-btn");
+        const voiceInputBtn = document.getElementById("voice-input-btn");
+        const compareBtn = document.getElementById("compare-btn");
+        const englishInput = document.getElementById("english-input");
+        const translatedText = document.getElementById("translated-text");
+        const recognitionResult = document.getElementById("recognition-result");
+        const scoreResult = document.getElementById("score-result");
+        const audioPlayer = document.getElementById("audio-player");
+        const japanBtn = document.getElementById("japan-btn");
+        const englishBtn = document.getElementById("english-btn");
+        const inputText = document.getElementById("input-text");
+        const inputTextEn = document.getElementById("input-text-en");
+
+        let expectedText = "";
+        let currentLanguage = "en-US"; // Default language is English
+
+        // Google 翻譯 API
+        translateBtn.addEventListener("click", async () => {
+            const text = englishInput.value.trim();
+            if (!text) {
+                translatedText.textContent = "請輸入文字！";
+                return;
+            }
+
+            translatedText.textContent = "翻譯中...";
+            try {
+                const response = await fetch(
+                    `https://translation.googleapis.com/language/translate/v2?q=${encodeURIComponent(text)}&target=zh-TW&key=AIzaSyADBVCJ0dKfMQrtJMgNuQ2E2SRNeE-XQ8k`
+                );
+                const data = await response.json();
+
+                if (data.error) {
+                    throw new Error(data.error.message);
+                }
+
+                expectedText = data.data.translations[0].translatedText;
+                translatedText.textContent = `翻譯結果：${expectedText}`;
+
+                audioPlayer.src = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(expectedText)}&tl=zh-TW&client=tw-ob`;
+                audioPlayer.style.display = "block";
+
+                compareBtn.disabled = false;
+            } catch (err) {
+                translatedText.textContent = `翻譯失敗：${err.message}`;
+            }
+        });
+
+        // 初始化語音輸入
+        const recognitionInput = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+        recognitionInput.lang = currentLanguage;
+        recognitionInput.interimResults = false;
+
+        voiceInputBtn.addEventListener("click", () => {
+            englishInput.value = "";
+            recognitionInput.start();
+        });
+
+        recognitionInput.onresult = (event) => {
+            const speechResult = event.results[0][0].transcript;
+            englishInput.value = speechResult;
+        };
+
+        recognitionInput.onerror = () => {
+            alert("語音輸入失敗，請再試一次！");
+        };
+
+        // 初始化語音辨識
+        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+        recognition.lang = "zh-TW";
+        recognition.interimResults = false;
+
+        compareBtn.addEventListener("click", () => {
+            recognitionResult.textContent = "聆聽中../listening../リスニング..";
+            scoreResult.textContent = "";
+            recognition.start();
+        });
+
+        recognition.onresult = (event) => {
+            const userSpeech = event.results[0][0].transcript.trim();
+            recognitionResult.textContent = `辨識結果：${userSpeech}`;
+            
+            // 檢測怪腔調
+            const similarity = calculateSimilarity(userSpeech, expectedText);
+            if (similarity < 0.50) {
+                recognitionResult.textContent = "腔調不清晰,再試一次!/ The pronunciation is not clear, try again!/ 発音が不明瞭です。もう一度試してください!";
+                scoreResult.textContent = "";
+                return;
+            }
+
+            calculateScore(userSpeech);
+        };
+
+        recognition.onerror = () => {
+            recognitionResult.textContent = "語音辨識失敗，請再試一次！";
+        };
+
+        function calculateScore(userSpeech) {
+            if (!expectedText) {
+                scoreResult.textContent = "請先進行翻譯！";
+                return;
+            }
+
+            const similarity = calculateSimilarity(userSpeech, expectedText);
+            const score = Math.round(similarity * 90);
+
+            if (score >= 80) {
+                scoreResult.className = "score nice";
+                scoreResult.textContent = `分數：${score} - Nice !!!`;
+            } else if (score >= 60) {
+                scoreResult.className = "score soso";
+                scoreResult.textContent = `分數：${score} - So So !!!`;
+            } else {
+                scoreResult.className = "score notgood";
+                scoreResult.textContent = `分數：${score} - Not Good !!!`;
+            }
+        }
+
+        function calculateSimilarity(a, b) {
+            const longer = a.length > b.length ? a : b;
+            const shorter = a.length > b.length ? b : a;
+            const longerLength = longer.length;
+            if (longerLength === 0) return 1.0;
+
+            const editDistance = longer.split("").reduce((acc, _, i) => {
+                return acc + (longer[i] === shorter[i] ? 0 : 1);
+            }, 0);
+
+            return 1 - editDistance / longerLength;
+        }
+
+        // 新增的功能
+        japanBtn.addEventListener("click", () => {
+            currentLanguage = "ja-JP";
+            recognitionInput.lang = currentLanguage;
+            inputText.textContent = "请输入一段日文，系统将翻译成繁体中文!";
+            inputTextEn.textContent = "日本語のテキストを入力すると、システムがそれを繁体字中国語に翻訳します。";
+            englishInput.placeholder = "输入日文...";
+        });
+
+        englishBtn.addEventListener("click", () => {
+            currentLanguage = "en-US";
+            recognitionInput.lang = currentLanguage;
+            inputText.textContent = "請輸入一段英文文字，系統將翻譯成繁體中文。";
+            inputTextEn.textContent = "Enter an English text, the system will translate it into Traditional Chinese.";
+            englishInput.placeholder = "輸入英文...";
+        });
+    </script>
+</body>
+</html>
